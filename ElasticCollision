@@ -1,0 +1,157 @@
+import java.io.*;
+
+public class ElasticCollision extends Thread{
+
+  private int n;
+  private double dt;
+  private int nParticles;
+  private int threadIndex;
+  
+  private double boxSizeX=10;
+  private double boxSizeY=10;
+  private double boxSizeZ=10;
+  private double particleRadius=0.2;
+  
+  
+  //solution[t, particle index, [x, y, z, dx/dt, dy/dt, dz/dt]]
+  public double[][][] solution;
+  
+  public double[] m;
+  
+  //constructor
+  public ElasticCollision(int n, double dt, int nParticles, int threadIndex){
+  this.n=n;
+  this.dt=dt;
+  this.nParticles=nParticles;
+  this.threadIndex=threadIndex;
+  
+  this.solution=new double[n+1][nParticles][6];
+  this.m=new double[nParticles];
+  }
+  
+  
+  //"main method"
+  public void run(){
+    
+    applyIC();
+    
+    for(int timeI=0; timeI<n; timeI++){
+      
+      for(int particleI=0; particleI<nParticles; particleI++){
+        
+        //REGULAR EVENTLESS ITERATION
+        solution[timeI+1][particleI][0]=solution[timeI][particleI][0]+solution[timeI][particleI][3]*dt;
+        solution[timeI+1][particleI][1]=solution[timeI][particleI][1]+solution[timeI][particleI][4]*dt;
+        solution[timeI+1][particleI][2]=solution[timeI][particleI][2]+solution[timeI][particleI][5]*dt;
+          
+        //regular transposition to next iteration, may be overwritten
+        solution[timeI+1][particleI][3]=solution[timeI][particleI][3];
+        solution[timeI+1][particleI][4]=solution[timeI][particleI][4];
+        solution[timeI+1][particleI][5]=solution[timeI][particleI][5];
+          
+       //FREE PARTICLE - FREE PARTICLE INTERACTIONS
+        
+        //elastic wall collision
+        if((solution[timeI+1][particleI][0]<=-boxSizeX || solution[timeI+1][particleI][0]>=boxSizeX)){solution[timeI+1][particleI][3]*=-1;}
+        else if((solution[timeI+1][particleI][1]<=-boxSizeY || solution[timeI+1][particleI][1]>=boxSizeY)){solution[timeI+1][particleI][4]*=-1;}
+        else if((solution[timeI+1][particleI][2]<=-boxSizeZ || solution[timeI+1][particleI][2]>=boxSizeZ)){solution[timeI+1][particleI][5]*=-1;}
+          
+        //elastic free particle collision
+        for(int particleJ=0; particleJ<nParticles; particleJ++){
+          if(particleI==particleJ){continue;}
+          double r=Math.sqrt((solution[timeI+1][particleI][0]-solution[timeI+1][particleJ][0])*(solution[timeI+1][particleI][0]-solution[timeI+1][particleJ][0])+(solution[timeI+1][particleI][1]-solution[timeI+1][particleJ][1])*(solution[timeI+1][particleI][1]-solution[timeI+1][particleJ][1])+(solution[timeI+1][particleI][2]-solution[timeI+1][particleJ][2])*(solution[timeI+1][particleI][2]-solution[timeI+1][particleJ][2]));
+          if(r<particleRadius){particleCollision(particleI, particleJ, timeI);}
+        }
+    
+      }
+    }
+    
+    outputTrajectory("Trajectories" + threadIndex + ".txt");
+    
+  }
+  
+  
+  public void applyIC(){
+    
+    for(int particle=0; particle<nParticles; particle++){
+    
+      //solution[particle index, t, [x, y, z, dx/dt, dy/dt, dz/dt, m]]
+      
+      solution[0][particle][0]=(2*Math.random()-1)*boxSizeX;       //x0
+      solution[0][particle][3]=(2*Math.random()-1);                //x'0
+      solution[0][particle][1]=(2*Math.random()-1)*boxSizeY;       //y0
+      solution[0][particle][4]=(2*Math.random()-1);                //y'0
+      solution[0][particle][2]=(2*Math.random()-1)*boxSizeZ;       //z0
+      solution[0][particle][5]=(2*Math.random()-1);                //z'0
+      
+      m[particle]=1;
+    
+    }
+    
+  }
+
+  
+  public void particleCollision(int particleI, int particleJ, int timeI){
+    
+    double[] normalVector=new double[3];
+    //position index particle index
+    double[][] parCompBefore=new double[3][2];
+    double[][] parCompAfter=new double[3][2];
+    double[][] perpComp=new double[3][2];
+    double projectionFactorI=0;
+    double projectionFactorJ=0;
+    
+    normalVector[0]=solution[timeI][particleI][0]-solution[timeI][particleJ][0]; normalVector[1]=solution[timeI][particleI][1]-solution[timeI][particleJ][1]; normalVector[2]=solution[timeI][particleI][2]-solution[timeI][particleJ][2];
+    projectionFactorI=(solution[timeI][particleI][3]*normalVector[0]+solution[timeI][particleI][4]*normalVector[1]+solution[timeI][particleI][5]*normalVector[2])/(normalVector[0]*normalVector[0]+normalVector[1]*normalVector[1]+normalVector[2]*normalVector[2]);
+    projectionFactorJ=(solution[timeI][particleJ][3]*normalVector[0]+solution[timeI][particleJ][4]*normalVector[1]+solution[timeI][particleJ][5]*normalVector[2])/(normalVector[0]*normalVector[0]+normalVector[1]*normalVector[1]+normalVector[2]*normalVector[2]);
+        
+    parCompBefore[0][0]=projectionFactorI*normalVector[0]; parCompBefore[1][0]=projectionFactorI*normalVector[1]; parCompBefore[2][0]=projectionFactorI*normalVector[2];
+    parCompBefore[0][1]=projectionFactorJ*normalVector[0]; parCompBefore[1][1]=projectionFactorJ*normalVector[1]; parCompBefore[2][1]=projectionFactorJ*normalVector[2];
+          
+    perpComp[0][0]=solution[timeI][particleI][3]-parCompBefore[0][0]; perpComp[1][0]=solution[timeI][particleI][4]-parCompBefore[1][0]; perpComp[2][0]=solution[timeI][particleI][5]-parCompBefore[2][0];
+    perpComp[0][1]=solution[timeI][particleJ][3]-parCompBefore[0][1]; perpComp[1][1]=solution[timeI][particleJ][4]-parCompBefore[1][1]; perpComp[2][1]=solution[timeI][particleJ][5]-parCompBefore[2][1];
+              
+    parCompAfter[0][0]=(parCompBefore[0][0]*(m[particleI]-m[particleJ])+2*m[particleJ]*parCompBefore[0][1])/(m[particleI]+m[particleJ]);
+    parCompAfter[1][0]=(parCompBefore[1][0]*(m[particleI]-m[particleJ])+2*m[particleJ]*parCompBefore[1][1])/(m[particleI]+m[particleJ]);
+    parCompAfter[2][0]=(parCompBefore[2][0]*(m[particleI]-m[particleJ])+2*m[particleJ]*parCompBefore[2][1])/(m[particleI]+m[particleJ]);
+    parCompAfter[0][1]=(parCompBefore[0][1]*(m[particleJ]-m[particleI])+2*m[particleI]*parCompBefore[0][0])/(m[particleI]+m[particleJ]);
+    parCompAfter[1][1]=(parCompBefore[1][1]*(m[particleJ]-m[particleI])+2*m[particleI]*parCompBefore[1][0])/(m[particleI]+m[particleJ]);
+    parCompAfter[2][1]=(parCompBefore[2][1]*(m[particleJ]-m[particleI])+2*m[particleI]*parCompBefore[2][0])/(m[particleI]+m[particleJ]);
+    
+    solution[timeI+1][particleI][3]=parCompAfter[0][0]+perpComp[0][0];
+    solution[timeI+1][particleI][4]=parCompAfter[1][0]+perpComp[1][0];
+    solution[timeI+1][particleI][5]=parCompAfter[2][0]+perpComp[2][0];
+    solution[timeI+1][particleJ][3]=parCompAfter[0][1]+perpComp[0][1];
+    solution[timeI+1][particleJ][4]=parCompAfter[1][1]+perpComp[1][1];
+    solution[timeI+1][particleJ][5]=parCompAfter[2][1]+perpComp[2][1];
+       
+  }
+  
+  
+  public void outputTrajectory(String fileName){
+
+    try{
+      FileWriter outStream = new FileWriter(fileName, false);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      //output format time x y z
+        for(int i=0; i<=n; i++){
+          outs.print(i*dt + " ");
+          for(int particle=0; particle<nParticles; particle++){
+            outs.print(solution[i][particle][0] + " " + solution[i][particle][1] + " " + solution[i][particle][2] + " ");
+          }
+          outs.println();
+        }
+               
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
+    //System.out.println(fileName + " completed");
+    
+  }
+  
+  
+}
