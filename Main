@@ -1,9 +1,17 @@
+import java.io.*;
 public class Main{
   
-  static int numberOfThreads=1;
+  static int numberOfThreads=10;               //number of parallel computations
   static int n=10000;                          //integration steps
   static double dt=0.01;                       //integration stepsize
-  static int nParticles=20;                    //Number of particles
+  static int nParticles=100;                    //Number of particles
+  
+  static int nVBins=100;
+  static int nTBins=100;
+  static double Vmin=0;
+  static double dV=0.1;
+  
+  static double[][] histogramV=new double[nTBins][nVBins];
   
   static ElasticCollision[] sim=new ElasticCollision[numberOfThreads];
   
@@ -25,9 +33,53 @@ public class Main{
       catch(Exception e){System.out.println("Interrupted");}
     }
     
+      //temporal energy histogram
+      for(int thread=0; thread<numberOfThreads; thread++){
+        for(int particleI=0; particleI<nParticles; particleI++){
+          for(int timeI=0; timeI<nTBins; timeI++){
+            double V=Math.sqrt(sim[thread].solution[timeI*n/nTBins][particleI][3]*sim[thread].solution[timeI*n/nTBins][particleI][3]+sim[thread].solution[timeI*n/nTBins][particleI][4]*sim[thread].solution[timeI*n/nTBins][particleI][4]+sim[thread].solution[timeI*n/nTBins][particleI][5]*sim[thread].solution[timeI*n/nTBins][particleI][5]);
+            for(int i=0; i<nVBins; i++){
+              if(Vmin+i*dV<=V && V<Vmin+(i+1)*dV){
+                histogramV[timeI][i]++;
+              }
+            }
+          }
+        }
+      }
+    
     double timeA=System.currentTimeMillis();
     
     System.out.println("Computation time: " + ((timeA-timeB)/1000.0) + " s");
+    
+    outputHistogramE("HistogramE");
+    sim[0].outputTrajectory("Trajectories" + 0 + ".txt");
+    
+  }
+  
+  
+  //output methods
+  static void outputHistogramE(String fileName){
+    
+    try{
+      FileWriter outStream = new FileWriter(fileName + ".txt", false);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      for(int i=0; i<nVBins; i++){outs.print(Vmin+dV*i + " ");}
+      for(int timeI=0; timeI<nTBins; timeI++){
+        outs.println();
+        double sum=0;
+        for(int i=0; i<nVBins; i++){sum+=histogramV[timeI][i];}
+        for(int i=0; i<nVBins; i++){
+          outs.print(histogramV[timeI][i]/sum + " ");
+        }
+      }
+      
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
     
   }
   
