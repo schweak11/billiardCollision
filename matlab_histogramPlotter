@@ -1,0 +1,15 @@
+data=importdata('histogramE.txt',' ',0);
+nions=100;
+
+
+v = VideoWriter('histogramE.avi');
+open(v);
+for k = 1:100
+    plot(data(1,:),data(1+k,:),'linewidth',3)
+    ylabel('Counts')
+    xlabel('Velocity')
+    frame = getframe(gcf);
+    writeVideo(v,frame);
+end
+
+close(v);
