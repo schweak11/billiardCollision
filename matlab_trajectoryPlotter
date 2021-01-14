@@ -1,0 +1,34 @@
+data=importdata('Trajectories0.txt',' ',0);
+nions=100;
+
+%initialize plot
+plot3(0,0,0,'xk')
+hold on
+
+%fix axes
+
+xlim([-10 10])
+ylim([-10 10])
+zlim([-10 10])
+view([1 1 1])
+
+%set(gcf, 'Position',  [0, 100, 1000, 1000])
+
+%labels
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+v = VideoWriter('Trajectories0.avi');
+open(v);
+for k = 1:10:2000
+    plot3(data(k,1*3-1),data(k,1*3),data(k,1*3+1),'.r')
+    plot3(data(k,2*3-1),data(k,2*3),data(k,2*3+1),'.b')
+    for i=3:nions
+       plot3(data(k,i*3-1),data(k,i*3),data(k,i*3+1),'.k')
+    end
+    frame = getframe(gcf);
+    writeVideo(v,frame);
+end
+
+close(v);
