@@ -10,8 +10,7 @@ public class ElasticCollision extends Thread{
   private double boxSizeX=10;
   private double boxSizeY=10;
   private double boxSizeZ=10;
-  private double particleRadius=0.2;
-  
+  private double particleRadius=0.8;
   
   //solution[t, particle index, [x, y, z, dx/dt, dy/dt, dz/dt]]
   public double[][][] solution;
@@ -62,11 +61,10 @@ public class ElasticCollision extends Thread{
           double r=Math.sqrt((solution[timeI+1][particleI][0]-solution[timeI+1][particleJ][0])*(solution[timeI+1][particleI][0]-solution[timeI+1][particleJ][0])+(solution[timeI+1][particleI][1]-solution[timeI+1][particleJ][1])*(solution[timeI+1][particleI][1]-solution[timeI+1][particleJ][1])+(solution[timeI+1][particleI][2]-solution[timeI+1][particleJ][2])*(solution[timeI+1][particleI][2]-solution[timeI+1][particleJ][2]));
           if(r<particleRadius){particleCollision(particleI, particleJ, timeI);}
         }
+        
     
       }
     }
-    
-    outputTrajectory("Trajectories" + threadIndex + ".txt");
     
   }
   
@@ -74,17 +72,17 @@ public class ElasticCollision extends Thread{
   public void applyIC(){
     
     for(int particle=0; particle<nParticles; particle++){
+      
+      m[particle]=1;
     
       //solution[particle index, t, [x, y, z, dx/dt, dy/dt, dz/dt, m]]
       
       solution[0][particle][0]=(2*Math.random()-1)*boxSizeX;       //x0
-      solution[0][particle][3]=(2*Math.random()-1);                //x'0
+      solution[0][particle][3]=0;                //x'0
       solution[0][particle][1]=(2*Math.random()-1)*boxSizeY;       //y0
-      solution[0][particle][4]=(2*Math.random()-1);                //y'0
+      solution[0][particle][4]=0;                //y'0
       solution[0][particle][2]=(2*Math.random()-1)*boxSizeZ;       //z0
-      solution[0][particle][5]=(2*Math.random()-1);                //z'0
-      
-      m[particle]=1;
+      solution[0][particle][5]=3;                //z'0
     
     }
     
